@@ -18,7 +18,7 @@ from common.model_evaluation import model_evaluation
 class Conf:
     EPOCHS = 100
     SEQ_LEN = 50
-    PREDICT_STEP = 20
+    PREDICT_STEP = 10
     TRAIN_DATA_RATE = 0.9
     BATCH_SIZE = 500
     LAYERS = [1, 50, 100, 1]
@@ -62,12 +62,13 @@ def load_data(filename):
         if s == '' or s in ('-', '+'):
             return np.nan
         try:
-            return float(s) * mult
+            res = float(s) * mult
+            return res if not np.isnan(res) else 0.0 # Trả về 0 thay vì NaN
         except Exception:
-            return np.nan
+            return 0.0
 
     data = df['KL'].apply(parse_kl).astype(float).values.reshape(-1, 1)
-
+    data = np.nan_to_num(data, nan=0.0)
     result = []
     base_prices = []  # Lưu giá gốc của mỗi window để denormalize
 
@@ -307,7 +308,7 @@ def main():
     predicted_denorm = scaler.inverse_transform(predicted.reshape(-1, 1)).flatten()
 
     # 预测接下来的 10 个值
-    future_predicted = predict_next_n_steps(model, X_test, Conf.SEQ_LEN, 10)
+    future_predicted = predict_next_n_steps(model, X_test, Conf.SEQ_LEN, Conf.PREDICT_STEP)
     # Denormalize future predictions sử dụng scaler
     future_prices = scaler.inverse_transform(np.array(future_predicted).reshape(-1, 1)).flatten()
     

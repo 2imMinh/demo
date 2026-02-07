@@ -16,7 +16,7 @@ from common.model_evaluation import model_evaluation
 
 
 class Conf:
-    EPOCHS = 300
+    EPOCHS = 50
     SEQ_LEN = 50
     PREDICT_STEP = 20
     TRAIN_DATA_RATE = 0.9
@@ -291,7 +291,7 @@ def main():
     full_prices = df_full['Lần cuối'].astype(str).str.replace(',', '').astype(float).values
     full_dates = df_full['Ngày'].values
 
-    plot_results(y_test_denorm, predicted_denorm, filename=os.path.join(results_dir, 'prediction.png'), future_pred=future_prices, dates=dates, full_prices=full_prices, full_dates=full_dates)
+    plot_results(y_test_denorm, predicted_denorm, filename=os.path.join(results_dir, 'prediction_price.png'), future_pred=future_prices, dates=dates, full_prices=full_prices, full_dates=full_dates)
     # 预测Conf.SEQ_LEN步
     # plot_results_multiple(y_test, predicted, Conf.SEQ_LEN, filename_prefix=os.path.join(results_dir, 'prediction_multiple'))
 
