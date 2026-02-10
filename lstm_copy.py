@@ -16,7 +16,7 @@ from common.model_evaluation import model_evaluation
 
 
 class Conf:
-    EPOCHS = 50
+    EPOCHS = 300
     SEQ_LEN = 50
     PREDICT_STEP = 20
     TRAIN_DATA_RATE = 0.9
@@ -85,11 +85,6 @@ def load_data(filename):
     return [_X_train, _y_train, _X_test, _y_test, test_base_prices, test_dates, scaler]
 
 
-def normalise_windows(window_data):
-    """
-    Lưu ý: Hàm này không còn được sử dụng vì đã normalize trước khi tạo windows
-    """
-    pass
 
 
 def denormalise_value(normalised_val, scaler):
@@ -151,7 +146,7 @@ def predict_sequence_full(model, data, window_size):
 
 
 def predict_next_n_steps(model, data, window_size, n_steps):
-    curr_frame = data[-1]  # 使用最后一个数据窗口
+    curr_frame = data[-1] 
     predicted = []
     for i in range(n_steps):
         predicted.append(model.predict(curr_frame[np.newaxis, :, :])[0, 0])
@@ -250,7 +245,7 @@ def main():
     print('> Loading data... ')
 
     # sin: sin.csv; stock: stock.csv; coffee: coffee_price.csv
-    filename = '/workspaces/copper_price_forecast/lstm/demo/coffee_price.csv'
+    filename = '/workspaces/demo/coffee_price.csv'
     X_train, y_train, X_test, y_test, test_base_prices, dates, scaler = load_data(filename)
 
     print('> Data Loaded. Compiling...')
