@@ -5,12 +5,18 @@ import numpy as np
 import pandas as pd
 import os
 from sklearn.preprocessing import MinMaxScaler
+import sys
 try:
-    from keras.layers import Dense, Activation, Dropout, LSTM
-    from keras.models import Sequential
-except Exception:
     from tensorflow.keras.layers import Dense, Activation, Dropout, LSTM
     from tensorflow.keras.models import Sequential
+    _BACKEND = 'tensorflow'
+except Exception:
+    try:
+        from keras.layers import Dense, Activation, Dropout, LSTM
+        from keras.models import Sequential
+        _BACKEND = 'keras'
+    except Exception:
+        sys.exit("Required package 'tensorflow' or 'keras' not found. Install with: pip install tensorflow (recommended) or pip install keras")
 
 from common.model_evaluation import model_evaluation
 
@@ -292,7 +298,6 @@ def main():
 
     # 该模型评估方法不适合多步预测（适合所有步）
     model_evaluation(pd.DataFrame(y_test_denorm), pd.DataFrame(predicted_denorm))
-
 
 if __name__ == '__main__':
     main()
