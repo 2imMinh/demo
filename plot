@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
+from statsmodels.tsa.stattools import adfuller
 from sklearn.preprocessing import MinMaxScaler
 
 # Defaults
@@ -31,16 +32,23 @@ plt.title('Lần cuối (Last price)')
 plt.savefig('results/plot.png')
 plt.show()
 
-# Define the d and q parameters to take any value between 0 and 1
-q = d = range(0, 1)
-# Define the p parameters to take any value between 0 and 3
-p = range(0, 3)
+# Define parameter search ranges (expand d and q so model can difference and use MA)
+d = range(0, 3)   # allow up to 2 differences
+q = range(0, 4)   # allow MA up to order 3
+# Define the p parameters to take values between 0 and 3
+p = range(0, 4)
 
 # Generate all different combinations of p, q and q triplets
 pdq = list(itertools.product(p, d, q))
 
-# Generate all different combinations of seasonal p, q and q triplets
-seasonal_pdq = [(x[0], x[1], x[2], 12) for x in list(itertools.product(p, d, q))]
+# Choose a seasonal period appropriate for daily data. If data frequency is daily,
+# a yearly seasonality is often 365 days; for weekly patterns use 7, monthly use 12.
+# Here we default to yearly seasonality but fall back to 7 if series shorter.
+seasonal_period = 365
+if len(data) < 400:
+    seasonal_period = 7
+# Generate all different combinations of seasonal p, d, q triplets with seasonal period
+seasonal_pdq = [(x[0], x[1], x[2], seasonal_period) for x in list(itertools.product(p, d, q))]
 
 print('Examples of parameter combinations for Seasonal ARIMA...')
 # Print up to the first few available combinations (safe against short lists)
@@ -112,6 +120,26 @@ mod = sm.tsa.statespace.SARIMAX(train_series,
 results = mod.fit(disp=False, maxiter=50, method='lbfgs')
 results.plot_diagnostics(figsize=(20, 14))
 plt.show()
+
+# --- Stationarity check (ADF) ---
+adf_res = adfuller(train_series.values)
+print(f"ADF test statistic: {adf_res[0]:.4f}, p-value: {adf_res[1]:.4f}")
+if adf_res[1] > 0.05:
+    print('Series is likely non-stationary (p>0.05). Trying a forced ARIMA with d=1 for comparison.')
+    try:
+        forced_order = (2, 1, 2)
+        forced_mod = sm.tsa.statespace.SARIMAX(train_series,
+                                              order=forced_order,
+                                              seasonal_order=(0, 0, 0, 0),
+                                              enforce_stationarity=False,
+                                              enforce_invertibility=False)
+        forced_res = forced_mod.fit(disp=False, maxiter=100)
+        print(f'Forced ARIMA{forced_order} AIC: {forced_res.aic}')
+    except Exception as e:
+        print('Forced ARIMA fit failed:', e)
+        forced_res = None
+else:
+    forced_res = None
 
 # Helper to parse date strings (accepts dd/mm/YYYY or ISO formats)
 def _parse_date(s):
@@ -201,7 +229,7 @@ for p in (pred0, pred1):
         pass
 
 try:
-    print(pred_mean.loc[_parse_date('18/01/2026'):_parse_date('28/01/2026')])
+    print(pred_mean.loc[_parse_date('28/01/2026'):_parse_date('10/02/2026')])
 except Exception:
     print(pred_mean)
 # Build a forecast Series with a DatetimeIndex to allow date slicing and plotting
@@ -218,17 +246,29 @@ try:
     pred2_ci.index = forecast_index
 except Exception:
     pass
+print('DEBUG: forecast_series length =', len(forecast_series))
+print('DEBUG: forecast_series unique =', forecast_series.nunique())
+print('DEBUG: forecast_series head:\n', forecast_series.head())
 
 ax = data.plot(figsize=(20, 16))
-pred0.predicted_mean.plot(ax=ax, label='1-step-ahead Forecast (get_predictions, dynamic=False)')
-pred1.predicted_mean.plot(ax=ax, label='Dynamic Forecast (get_predictions, dynamic=True)')
-forecast_series.plot(ax=ax, label='Dynamic Forecast (get_forecast)')
+# Use markers and explicit linewidth so forecast appears as points/segments rather than a thick solid band
+try:
+    ax.plot(pred0.predicted_mean.index, pred0.predicted_mean.values, '-o', markersize=4, linewidth=1.0, label='1-step-ahead Forecast (get_predictions, dynamic=False)')
+except Exception:
+    pass
+try:
+    ax.plot(pred1.predicted_mean.index, pred1.predicted_mean.values, '-o', markersize=4, linewidth=1.0, label='Dynamic Forecast (get_predictions, dynamic=True)')
+except Exception:
+    pass
+ax.plot(forecast_series.index, forecast_series.values, '-o', markersize=6, linewidth=1.6, color='black', drawstyle='default', label='Forecast')
 ax.fill_between(forecast_index, pred2_ci.iloc[:, 0], pred2_ci.iloc[:, 1], color='k', alpha=.1)
+
 plt.ylabel('Monthly coffee price (USD)')
 plt.xlabel('Date')
 plt.legend()
-plt.show()
+plt.tight_layout()
 plt.savefig('results/arima.png')
+plt.show()
 
 # Slice forecast by date range safely using the forecast_series (DatetimeIndex)
 prediction = forecast_series.loc[_parse_date('18/01/2026'):_parse_date('28/01/2026')].values

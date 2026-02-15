@@ -75,7 +75,6 @@ def load_data(filename):
     _X_test = result[int(row):, :-1]
     _y_test = result[int(row):, -1]
 
-    # 增加一列
     _X_train = _X_train[:, :, np.newaxis]
     _X_test = _X_test[:, :, np.newaxis]
 
@@ -257,14 +256,10 @@ def main():
     print('> Data Loaded. Compiling...')
 
     model = build_model(Conf.LAYERS)
-
     model.fit(X_train, y_train, batch_size=Conf.BATCH_SIZE, epochs=Conf.EPOCHS, validation_split=0.05)
 
-    # 预测一步
     predicted = predict_point_by_point(model, X_test)
-    # 预测所有步
-    # predicted = predict_sequence_full(model, X_test, Conf.SEQ_LEN)
-    # 预测Conf.SEQ_LEN步
+    
     # predicted = predict_sequences_multiple(model, X_test, Conf.SEQ_LEN, 50)
 
     print('Training duration (s) : ', time.time() - global_start_time)
@@ -274,7 +269,7 @@ def main():
     y_test_denorm = scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
     predicted_denorm = scaler.inverse_transform(predicted.reshape(-1, 1)).flatten()
 
-    # 预测接下来的 10 个值
+    
     future_predicted = predict_next_n_steps(model, X_test, Conf.SEQ_LEN, 10)
     # Denormalize future predictions sử dụng scaler
     future_prices = scaler.inverse_transform(np.array(future_predicted).reshape(-1, 1)).flatten()
@@ -283,7 +278,7 @@ def main():
     for i, price in enumerate(future_prices, 1):
         print(f"Day {i}: ${price:.2f}")
 
-    # 预测一步及所有步 - lưu đồ thị vào thư mục demo/results
+    # lưu đồ thị vào thư mục demo/results
     results_dir = os.path.join(os.path.dirname(__file__), 'results')
     os.makedirs(results_dir, exist_ok=True)
     # Đọc lại toàn bộ giá và ngày để plot nền
@@ -293,10 +288,8 @@ def main():
     full_dates = df_full['Ngày'].values
 
     plot_results(y_test_denorm, predicted_denorm, filename=os.path.join(results_dir, 'prediction_price.png'), future_pred=future_prices, dates=dates, full_prices=full_prices, full_dates=full_dates)
-    # 预测Conf.SEQ_LEN步
     # plot_results_multiple(y_test, predicted, Conf.SEQ_LEN, filename_prefix=os.path.join(results_dir, 'prediction_multiple'))
 
-    # 该模型评估方法不适合多步预测（适合所有步）
     model_evaluation(pd.DataFrame(y_test_denorm), pd.DataFrame(predicted_denorm))
 
 if __name__ == '__main__':
