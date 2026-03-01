@@ -298,6 +298,85 @@ def plot_results_multiple(y_true, y_pred, predict_len, filename_prefix=None):
     else:
         plt.show()
 
+def plot_train_test_split(filename):
+    """
+    Vẽ biểu đồ phân chia dữ liệu Train/Test dựa trên tỷ lệ TRAIN_DATA_RATE
+    """
+    # Đọc dữ liệu
+    df = pd.read_csv(filename)
+    # Đảo ngược dữ liệu như trong load_data
+    df = df.iloc[::-1].reset_index(drop=True)
+    
+    # Xử lý dữ liệu giá
+    prices = df['Lần cuối'].astype(str).str.replace(',', '').astype(float).values
+    dates = df['Ngày'].values
+    
+    # Tính toán điểm cắt (Split Point)
+    # Lưu ý: Cần trừ đi SEQ_LEN vì load_data cắt bớt đoạn đầu để tạo window
+    data_len = len(prices) - Conf.SEQ_LEN - 1
+    train_size = round(data_len * Conf.TRAIN_DATA_RATE)
+    split_idx = train_size + Conf.SEQ_LEN  # Điểm bắt đầu của test set trên trục thời gian thực
+    
+    # Vẽ biểu đồ
+    plt.figure(figsize=(14, 6))
+    
+    # Vẽ phần Train
+    plt.plot(range(split_idx), prices[:split_idx], label='Training Set', color='blue', linewidth=2)
+    
+    # Vẽ phần Test
+    plt.plot(range(split_idx, len(prices)), prices[split_idx:], label='Test Set', color='orange', linewidth=2)
+    
+    # Đánh dấu điểm cắt
+    plt.axvline(x=split_idx, color='red', linestyle='--', label='Split Point')
+    
+    # Trang trí biểu đồ
+    plt.title('Data Split: Training Set vs Test Set', fontsize=14, fontweight='bold')
+    plt.xlabel('Timeline (Days)', fontsize=12)
+    plt.ylabel('Price', fontsize=12)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # Lưu hoặc hiển thị
+    results_dir = os.path.join(os.path.dirname(__file__), 'results')
+    os.makedirs(results_dir, exist_ok=True)
+    save_path = os.path.join(results_dir, 'data_split.png')
+    plt.savefig(save_path)
+    print(f"> Saved train/test split plot to {save_path}")
+    plt.show() # Hoặc plt.close() nếu không muốn hiện cửa sổ
+
+def correlation(x, y):
+    """
+    Tính hệ số tương quan Pearson thủ công (Manual implementation)
+    """
+    # === PHẦN SỬA ĐỔI ===
+    # Đảm bảo input là list 1 chiều, tránh lỗi nếu đưa vào numpy array (N, 1)
+    if hasattr(x, 'flatten'): x = x.flatten().tolist()
+    if hasattr(y, 'flatten'): y = y.flatten().tolist()
+    # ====================
+
+    # Finding the mean of the series x and y
+    mean_x = sum(x) / float(len(x))
+    mean_y = sum(y) / float(len(y))
+    
+    # Subtracting mean from the individual elements
+    sub_x = [i - mean_x for i in x]
+    sub_y = [i - mean_y for i in y]
+    
+    # covariance for x and y
+    numerator = sum([sub_x[i] * sub_y[i] for i in range(len(sub_x))])
+    
+    # Standard Deviation of x and y
+    std_deviation_x = sum([sub_x[i]**2.0 for i in range(len(sub_x))])
+    std_deviation_y = sum([sub_y[i]**2.0 for i in range(len(sub_y))])
+    
+    # squaring by 0.5 to find the square root
+    # Tránh lỗi chia cho 0 nếu độ lệch chuẩn bằng 0
+    denominator = (std_deviation_x * std_deviation_y)**0.5
+    if denominator == 0:
+        return 0
+        
+    cor = numerator / denominator
+    return cor
 
 def main():
     global_start_time = time.time()
@@ -307,7 +386,7 @@ def main():
     # sin: sin.csv; stock: stock.csv; coffee: coffee_price.csv
     filename = '/workspaces/demo/coffee_price.csv'
     X_train, y_train, X_test, y_test, test_base_prices, dates, scaler = load_data(filename)
-
+    plot_train_test_split(filename)
     print('> Data Loaded. Compiling...')
 
     model = build_model(Conf.LAYERS)
@@ -344,7 +423,8 @@ def main():
 
     plot_results(y_test_denorm, predicted_denorm, filename=os.path.join(results_dir, 'prediction_price.png'), future_pred=future_prices, dates=dates, full_prices=full_prices, full_dates=full_dates)
     # plot_results_multiple(y_test, predicted, Conf.SEQ_LEN, filename_prefix=os.path.join(results_dir, 'prediction_multiple'))
-
+    r_score = correlation(y_test_denorm, predicted_denorm)
+    print(f"\n> Correlation Coefficient (Manual Calculation): {r_score:.4f}")
     model_evaluation(pd.DataFrame(y_test_denorm), pd.DataFrame(predicted_denorm))
 
 if __name__ == '__main__':
