@@ -22,7 +22,7 @@ from common.model_evaluation import model_evaluation
 
 
 class Conf:
-    EPOCHS = 300
+    EPOCHS = 500
     SEQ_LEN = 50
     PREDICT_STEP = 20
     TRAIN_DATA_RATE = 0.9
@@ -161,63 +161,118 @@ def predict_next_n_steps(model, data, window_size, n_steps):
 
 
 def plot_results(y_true, y_pred, filename=None, future_pred=None, dates=None, full_prices=None, full_dates=None, test_start_idx=None):
-    from matplotlib.ticker import StrMethodFormatter
-    
-    fig = plt.figure(facecolor='white', figsize=(16, 6))
+    # seaborn optional (fallback nếu không cài)
+    try:
+        import seaborn as sns
+    except Exception:
+        sns = None
+    import matplotlib.dates as mdates
+    from matplotlib.dates import YearLocator, DateFormatter
+
+    # Áp dụng style ggplot
+    plt.style.use('ggplot')
+    if sns is not None:
+        try:
+            sns.set_palette("husl")
+        except Exception:
+            pass
+
+    fig = plt.figure(facecolor='white', figsize=(16, 8))
     ax = fig.add_subplot(111)
-    
-    # Vẽ toàn bộ dữ liệu gốc làm nền
-    if full_prices is not None and full_dates is not None:
-        ax.plot(range(len(full_prices)), full_prices, label='Full Price Series', color='gray', alpha=0.4, linewidth=2)
-    
+
+    # Chuyển full_dates sang datetime (thử dayfirst rồi fallback)
+    full_dates_dt = None
+    if full_dates is not None:
+        full_dates_dt = pd.to_datetime(full_dates, dayfirst=True, errors='coerce')
+
     # Tính vị trí bắt đầu của test data trong full series
+    # note: do not subtract future_pred here, we want the true data aligned to the latest dates
     if test_start_idx is None and full_prices is not None:
-        # Nếu không biết test_start_idx, dùng vị trí sao cho test data ở cuối
-        test_start_idx = len(full_prices) - len(y_true) - (len(future_pred) if future_pred is not None else 0)
-    
-    # Vẽ true data và prediction ở vị trí cuối của full series
-    x_timeline = list(range(test_start_idx, test_start_idx + len(y_true))) if test_start_idx is not None else list(range(len(y_true)))
-    
-    ax.plot(x_timeline, y_true, label='True Data', linewidth=2)
-    ax.plot(x_timeline, y_pred, label='Prediction', linewidth=2)
-    
-    # Nếu có dữ liệu dự báo tiếp theo, thêm vào plot
+        test_start_idx = len(full_prices) - len(y_true)
+
+    # Vẽ toàn bộ dữ liệu gốc làm nền (dùng datetime nếu có)
+    if full_prices is not None and full_dates_dt is not None:
+        mask = ~full_dates_dt.isna()
+        ax.plot(full_dates_dt[mask], full_prices[mask], label='Full Price Series',
+                color='#E63946', alpha=0.7, linewidth=1.8)
+    elif full_prices is not None:
+        ax.plot(range(len(full_prices)), full_prices, label='Full Price Series',
+                color='#E63946', alpha=0.7, linewidth=1.8)
+
+    # Vẽ true data và prediction tại vị trí cuối của full series (dùng datetime nếu có)
+    if full_dates_dt is not None:
+        x_timeline_dates = full_dates_dt[test_start_idx: test_start_idx + len(y_true)]
+        ax.plot(x_timeline_dates, y_true, label='Actual Price', linewidth=2.5, marker='o',
+                markersize=3, color='#2E86AB', alpha=0.9)
+        ax.plot(x_timeline_dates, y_pred, label='Prediction', linewidth=2.5, marker='s',
+                markersize=3, color='#A23B72', alpha=0.7)
+    else:
+        x_timeline = list(range(test_start_idx, test_start_idx + len(y_true))) if test_start_idx is not None else list(range(len(y_true)))
+        ax.plot(x_timeline, y_true, label='Actual Price', linewidth=2.5, marker='o',
+                markersize=3, color='#2E86AB', alpha=0.9)
+        ax.plot(x_timeline, y_pred, label='Prediction', linewidth=2.5, marker='s',
+                markersize=3, color='#A23B72', alpha=0.7)
+
+    # Nếu có dữ liệu dự báo tiếp theo, thêm vào plot (tạo ngày tiếp theo nếu dùng datetime)
     if future_pred is not None:
-        # Tính vị trí bắt đầu cho dự báo tiếp theo
-        start_idx = x_timeline[-1]
-        x_future = list(range(start_idx, start_idx + len(future_pred)))
-        ax.plot(x_future, future_pred, label='Future Prediction', linestyle='--', marker='o', linewidth=2)
-    
+        if full_dates_dt is not None:
+            # Try to create future dates starting the day after last_date; fallback to numeric indices if invalid
+            try:
+                last_date = full_dates_dt[test_start_idx + len(y_true) - 1]
+                if pd.isna(last_date):
+                    raise ValueError('last_date is NaT')
+                # add a buffer so forecast doesn't visually overlap the last points
+                gap_days = 1  # could be unrelated; ensures clear separation
+                start_future = last_date + pd.Timedelta(days=gap_days + 1)
+                x_future = pd.date_range(start=start_future, periods=len(future_pred), freq='D')
+                ax.plot(x_future, future_pred, label='Future Forecast', linestyle='--',
+                        marker='D', markersize=4, linewidth=2.5, color='#F18F01', alpha=0.85)
+                ax.fill_between(x_future, future_pred, alpha=0.15, color='#F18F01')
+            except Exception:
+                # fallback to numeric indices placed after the last plotted index
+                # also add gap of len(y_true) to separate clearly
+                start_idx = test_start_idx + len(y_true) + len(y_true)
+                x_future = list(range(start_idx, start_idx + len(future_pred)))
+                ax.plot(x_future, future_pred, label='Future Forecast', linestyle='--',
+                        marker='D', markersize=4, linewidth=2.5, color='#F18F01', alpha=0.85)
+                ax.fill_between(x_future, future_pred, alpha=0.15, color='#F18F01')
+        else:
+            # Start future points after the last plotted index to avoid overlap
+            start_idx = x_timeline[-1] + 1
+            x_future = list(range(start_idx, start_idx + len(future_pred)))
+            ax.plot(x_future, future_pred, label='Future Forecast', linestyle='--',
+                marker='D', markersize=4, linewidth=2.5, color='#F18F01', alpha=0.85)
+            ax.fill_between(x_future, future_pred, alpha=0.15, color='#F18F01')
+
     # Format trục Y để hiển thị đơn vị $
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:.0f}'))
-    
-    # Thiết lập labels cho trục
-    if dates is not None and len(dates) > 0:
-        # Hiển thị một số dates quan trọng trên trục X
-        step = max(1, len(dates) // 10)  # Hiển thị khoảng 10 labels
-        tick_indices = list(range(0, len(dates), step))
-        if len(dates) - 1 not in tick_indices:
-            tick_indices.append(len(dates) - 1)
-        
-        ax.set_xticks(tick_indices)
-        ax.set_xticklabels([dates[i] if i < len(dates) else '' for i in tick_indices], rotation=45, ha='right')
-        ax.set_xlabel(f'Timeline ({dates[0]} to {dates[-1]})', fontsize=12, fontweight='bold')
+
+    # Thiết lập trục X hiển thị theo năm
+    if full_dates_dt is not None:
+        ax.xaxis.set_major_locator(YearLocator())            # mỗi năm một mốc chính
+        ax.xaxis.set_major_formatter(DateFormatter('%Y'))    # chỉ hiển thị năm
+        ax.xaxis.set_minor_locator(mdates.MonthLocator(bymonth=(1,7)))  # minor ticks (tuỳ chọn)
+        plt.setp(ax.get_xticklabels(), rotation=45, ha='right', fontsize=10)
+        ax.set_xlabel('Date', fontsize=12, fontweight='bold')
     else:
         ax.set_xlabel('Timeline (Days)', fontsize=12, fontweight='bold')
+
+    ax.set_ylabel('Daily coffee price (USD)', fontsize=12, fontweight='bold')
     
-    ax.set_ylabel('Price', fontsize=12, fontweight='bold')
-    ax.set_title('Coffee Price Forecast (14/01/2008 - 28/01/2026)', fontsize=14, fontweight='bold')
-    
-    # Thêm grid để dễ đọc
-    ax.grid(True, alpha=0.3)
-    
-    plt.legend(fontsize=10, loc='best')
+    # Cải thiện grid theo style ggplot
+    ax.grid(True, alpha=0.35, linestyle='-', linewidth=0.6, color='white')
+    ax.set_axisbelow(True)
+    ax.set_facecolor('#E8E8E8')
+
+    # Cải thiện legend
+    ax.legend(fontsize=10, loc='upper left', framealpha=0.95, edgecolor='none')
+
     plt.tight_layout()
-    
+
     if filename:
         dirpath = os.path.dirname(filename) or '.'
         os.makedirs(dirpath, exist_ok=True)
-        plt.savefig(filename, dpi=300)
+        plt.savefig(filename, dpi=300, bbox_inches='tight', facecolor='white')
         plt.close(fig)
         print(f"> Saved plot to {filename}")
     else:
