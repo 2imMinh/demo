@@ -12,7 +12,7 @@ except Exception:
     from tensorflow.keras.layers import Dense, Activation, Dropout, LSTM
     from tensorflow.keras.models import Sequential
 
-from common.model_evaluation import model_evaluation
+from legacy_v1.src.model_evaluation import model_evaluation
 
 cd /workspaces/copper_price_forecast && python3 -m lstm.demo.lstm_copy_explore --mode multi-step --use-volume --epochs 100 2>&1 | tail -50
 class Conf:

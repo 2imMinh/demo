@@ -18,7 +18,7 @@ except Exception:
     except Exception:
         sys.exit("Required package 'tensorflow' or 'keras' not found. Install with: pip install tensorflow (recommended) or pip install keras")
 
-from common.model_evaluation import model_evaluation
+from legacy_v1.src.model_evaluation import model_evaluation
 
 
 class Conf:

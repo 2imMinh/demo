@@ -12,7 +12,7 @@ except Exception:
     from tensorflow.keras.layers import Dense, Activation, Dropout, LSTM
     from tensorflow.keras.models import Sequential
 
-from common.model_evaluation import model_evaluation
+from legacy_v1.src.model_evaluation import model_evaluation
 
 
 class Conf:
