@@ -38,7 +38,7 @@ Coffee-Hedging-Strategy/
 │   └── processed/            # Cross-market synchronized matrices (ffill imputed)
 ├── notebooks/
 │   ├── 01_data_preprocessing.ipynb    # ETL Pipeline: Volume parsing & Temporal merge
-│   └── advanced.ipynb                 # Core execution: Tensor generation & Forecasting
+│   └── 02_model.ipynb                 # Core execution: Tensor generation & Forecasting
 ├── reports/                  
 │   ├── figures/              
 │   │   ├── Fig3_1_AntiLeakage_Protocol.png           # Architectural validation
