@@ -80,3 +80,21 @@ Coffee-Hedging-Strategy/
 │   └── Future_7Days.csv      # 7-day quantitative hedge matrix
 ├── requirements.txt          # Explicit version pinning for environment replication
 └── LICENSE                   # MIT License with co-authorship matrix
+
+## VI. DEPLOYMENT INSTRUCTIONS
+To replicate the exact research environment and prevent `ModuleNotFoundError` or structural tensor mismatches (**TensorFlow >= 2.9.1 required**), execute the locked dependency matrix:
+
+```bash
+pip install -r requirements.txt
+```
+
+Execute the notebooks strictly in their designated numerical order to maintain the integrity of the data pipeline.
+
+---
+
+## VII. INTELLECTUAL PROPERTY & ATTRIBUTION
+Distributed under the MIT License.
+
+Copyright (c) 2026 Cao Ha Hai Dang & 2imMinh.
+
+Any academic citation, commercial exploitation, or structural derivation of this pipeline must explicitly reference this repository and preserve the original co-authorship attribution.
