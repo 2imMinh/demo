@@ -33,7 +33,7 @@ The framework's benchmarking is mathematically validated over a blind out-of-sam
 
 | Architecture | MAE (USD/Ton) | RMSE (USD/Ton) | MAPE (%) | $R^2$ |
 | :--- | :---: | :---: | :---: | :---: |
-| Univariate ARIMA Baseline | 1460.32 | 1834.38 | 34.86 | -1.4774 |
+| Univariate ARIMA(2,1,2) Baseline | 1460.32 | 1834.38 | 34.86 | -1.4774 |
 | Standalone Transformer | 1090.39 | 1379.71 | 26.21 | -0.4015 |
 | Hybrid ARIMA-LSTM | 1471.24 | 1851.08 | 35.08 | -1.5227 |
 | Hybrid ARIMA-Transformer | 1486.20 | 1868.64 | 35.44 | -1.5708 |
@@ -80,6 +80,9 @@ Coffee-Hedging-Strategy/
 │   └── Future_7Days.csv      # 7-day quantitative hedge matrix
 ├── requirements.txt          # Explicit version pinning for environment replication
 └── LICENSE                   # MIT License with co-authorship matrix
+```
+
+---
 
 ## VI. DEPLOYMENT INSTRUCTIONS
 To replicate the exact research environment and prevent `ModuleNotFoundError` or structural tensor mismatches (**TensorFlow >= 2.9.1 required**), execute the locked dependency matrix:
